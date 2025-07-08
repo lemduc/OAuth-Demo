@@ -16,6 +16,8 @@
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "passport": "^0.7.0",
-    "passport-oauth2": "^1.8.0"
+    "passport-auth0": "^1.4.4",
+    "passport-oauth2": "^1.8.0",
+    "ws": "^8.18.3"
   }
 }

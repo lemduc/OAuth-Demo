@@ -2,10 +2,18 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
-const OAuth2Strategy = require('passport-oauth2');
+const Auth0Strategy = require('passport-auth0');
 const path = require('path');
+const http = require('http');
+const WebSocket = require('ws');
+const url = require('url');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// Store WebSocket clients
+const clients = new Set();
 
 // Session middleware
 app.use(session({
@@ -21,17 +29,47 @@ app.use(passport.session());
 // Serve static files
 app.use(express.static('public'));
 
-// Passport OAuth2 configuration
-passport.use(new OAuth2Strategy({
-    authorizationURL: process.env.OAUTH_AUTH_URL,
-    tokenURL: process.env.OAUTH_TOKEN_URL,
-    clientID: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    callbackURL: process.env.CALLBACK_URL
+// Broadcast to all connected clients
+function broadcast(message) {
+    clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(message));
+        }
+    });
+}
+
+// WebSocket connection handling
+wss.on('connection', (ws) => {
+    clients.add(ws);
+    
+    ws.on('close', () => {
+        clients.delete(ws);
+    });
+});
+
+// Auth0 configuration with detailed logging
+passport.use(new Auth0Strategy({
+    domain: process.env.AUTH0_DOMAIN,
+    clientID: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    callbackURL: process.env.AUTH0_CALLBACK_URL
 },
-function(accessToken, refreshToken, profile, cb) {
-    // Here you would typically find or create a user in your database
-    return cb(null, { accessToken });
+function(accessToken, refreshToken, extraParams, profile, cb) {
+    // Log token exchange success
+    broadcast({
+        step: 4,
+        title: "Token Exchange Successful",
+        data: {
+            accessToken: `${accessToken.substr(0, 10)}...`,
+            idToken: extraParams.id_token ? `${extraParams.id_token.substr(0, 10)}...` : null,
+            profile: {
+                name: profile.displayName,
+                email: profile.emails?.[0]?.value,
+                picture: profile.picture
+            }
+        }
+    });
+    return cb(null, profile);
 }));
 
 passport.serializeUser((user, done) => {
@@ -47,17 +85,56 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/login', passport.authenticate('oauth2'));
+app.get('/login', (req, res, next) => {
+    // Log the start of authentication
+    broadcast({
+        step: 1,
+        title: "Starting Auth0 Authentication",
+        data: {
+            authUrl: `https://${process.env.AUTH0_DOMAIN}/authorize?` +
+                    `client_id=${process.env.AUTH0_CLIENT_ID}&` +
+                    `redirect_uri=${process.env.AUTH0_CALLBACK_URL}&` +
+                    `response_type=code&` +
+                    `scope=openid%20email%20profile`
+        }
+    });
+    passport.authenticate('auth0', {
+        scope: 'openid email profile'
+    })(req, res, next);
+});
 
-app.get('/callback',
-    passport.authenticate('oauth2', { 
+app.get('/callback', (req, res, next) => {
+    // Log the authorization code receipt
+    if (req.query.code) {
+        broadcast({
+            step: 3,
+            title: "Authorization Code Received",
+            data: {
+                code: `${req.query.code.substr(0, 10)}...`,
+                state: req.query.state
+            }
+        });
+    }
+
+    passport.authenticate('auth0', { 
         failureRedirect: '/login',
         failureMessage: true
-    }),
-    (req, res) => {
-        res.redirect('/protected');
-    }
-);
+    })(req, res, next);
+}, (req, res) => {
+    // Log successful authentication
+    broadcast({
+        step: 5,
+        title: "Authentication Complete",
+        data: {
+            user: {
+                name: req.user.displayName,
+                email: req.user.emails?.[0]?.value,
+                picture: req.user.picture
+            }
+        }
+    });
+    res.redirect('/protected');
+});
 
 app.get('/protected', ensureAuthenticated, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'protected.html'));
@@ -78,7 +155,7 @@ function ensureAuthenticated(req, res, next) {
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log('Visit http://localhost:3000 to see the demo');
 });

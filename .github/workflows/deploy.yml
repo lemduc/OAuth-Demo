@@ -28,9 +28,8 @@ jobs:
     
     - name: Create env file
       run: |
-        echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" > .env
-        echo "CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> .env
-        echo "OAUTH_AUTH_URL=${{ secrets.OAUTH_AUTH_URL }}" >> .env
-        echo "OAUTH_TOKEN_URL=${{ secrets.OAUTH_TOKEN_URL }}" >> .env
-        echo "CALLBACK_URL=${{ secrets.CALLBACK_URL }}" >> .env
+        echo "AUTH0_DOMAIN=${{ secrets.AUTH0_DOMAIN }}" > .env
+        echo "AUTH0_CLIENT_ID=${{ secrets.AUTH0_CLIENT_ID }}" >> .env
+        echo "AUTH0_CLIENT_SECRET=${{ secrets.AUTH0_CLIENT_SECRET }}" >> .env
+        echo "AUTH0_CALLBACK_URL=${{ secrets.AUTH0_CALLBACK_URL }}" >> .env
         echo "PORT=${{ secrets.PORT }}" >> .env

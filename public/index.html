@@ -4,60 +4,217 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OAuth Demo</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            background-color: #f5f5f5;
-            padding: 20px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .flow-diagram {
-            margin: 20px 0;
-            padding: 20px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-        }
-    </style>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <h1>OAuth 2.0 Authorization Code Flow Demo</h1>
-    
     <div class="container">
-        <h2>What is OAuth Authorization Code Flow?</h2>
-        <p>The OAuth 2.0 Authorization Code Flow is the most secure way to authenticate users in web applications. It involves several steps to ensure secure authentication:</p>
+        <h1>OAuth 2.0 Authorization Code Flow Demo</h1>
         
-        <div class="flow-diagram">
-            <h3>Flow Steps:</h3>
-            <ol>
-                <li>User clicks "Login" and is redirected to the OAuth provider</li>
-                <li>User authenticates with the provider and grants permissions</li>
-                <li>Provider redirects back to our app with an authorization code</li>
-                <li>Our server exchanges the code for an access token</li>
-                <li>User is authenticated and can access protected resources</li>
-            </ol>
+        <div class="progress-bar">
+            <div class="progress" style="width: 20%"></div>
+        </div>
+
+        <!-- Step 1 -->
+        <div class="step active" id="step1">
+            <div class="step-header">
+                <div class="step-number">1</div>
+                <h2>Initiate OAuth Flow</h2>
+            </div>
+            <p>When you click "Login with Auth0", the following will happen:</p>
+            <div class="message-exchange">
+                <div>GET /login</div>
+                <div class="message-arrow">Redirects to Auth0's authorization endpoint</div>
+                <div class="code-block">
+                    https://${AUTH0_DOMAIN}/authorize?
+                    response_type=code&
+                    client_id=${CLIENT_ID}&
+                    redirect_uri=${CALLBACK_URL}&
+                    scope=openid+profile+email
+                </div>
+            </div>
+            <div class="navigation">
+                <a href="/login" class="btn" onclick="startOAuth()">Login with Auth0</a>
+                <button class="btn" onclick="nextStep()">Show Next Step</button>
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step" id="step2">
+            <div class="step-header">
+                <div class="step-number">2</div>
+                <h2>User Authentication</h2>
+            </div>
+            <p>At Auth0's login page:</p>
+            <div class="message-exchange">
+                <div>1. User enters credentials</div>
+                <div class="message-arrow">Auth0 validates credentials</div>
+                <div>2. User consents to requested permissions</div>
+            </div>
+            <div class="navigation">
+                <button class="btn" onclick="previousStep()">Previous</button>
+                <button class="btn" onclick="nextStep()">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step" id="step3">
+            <div class="step-header">
+                <div class="step-number">3</div>
+                <h2>Authorization Code Grant</h2>
+            </div>
+            <p>After successful authentication:</p>
+            <div class="message-exchange">
+                <div>Auth0 redirects back to your application</div>
+                <div class="message-arrow">With authorization code</div>
+                <div class="code-block">
+                    ${CALLBACK_URL}?code=AUTHORIZATION_CODE
+                </div>
+            </div>
+            <div class="navigation">
+                <button class="btn" onclick="previousStep()">Previous</button>
+                <button class="btn" onclick="nextStep()">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step" id="step4">
+            <div class="step-header">
+                <div class="step-number">4</div>
+                <h2>Token Exchange</h2>
+            </div>
+            <p>Your server exchanges the authorization code for tokens:</p>
+            <div class="message-exchange">
+                <div>POST to Auth0's token endpoint</div>
+                <div class="code-block">
+                    POST https://${AUTH0_DOMAIN}/oauth/token
+                    {
+                        "grant_type": "authorization_code",
+                        "code": "AUTHORIZATION_CODE",
+                        "client_id": "${CLIENT_ID}",
+                        "client_secret": "${CLIENT_SECRET}",
+                        "redirect_uri": "${CALLBACK_URL}"
+                    }
+                </div>
+                <div class="message-arrow">Returns access & ID tokens</div>
+            </div>
+            <div class="navigation">
+                <button class="btn" onclick="previousStep()">Previous</button>
+                <button class="btn" onclick="nextStep()">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step" id="step5">
+            <div class="step-header">
+                <div class="step-number">5</div>
+                <h2>Success!</h2>
+            </div>
+            <p>Authentication complete:</p>
+            <div class="message-exchange">
+                <div>✓ User is authenticated</div>
+                <div>✓ Access token stored in session</div>
+                <div>✓ User profile information available</div>
+            </div>
+            <div class="navigation">
+                <button class="btn" onclick="previousStep()">Previous</button>
+                <a href="/protected" class="btn">View Protected Resource</a>
+            </div>
         </div>
     </div>
 
-    <div class="container">
-        <h2>Try it yourself!</h2>
-        <p>Click the button below to start the OAuth flow:</p>
-        <a href="/login" class="btn">Login with OAuth</a>
-    </div>
+    <script>
+        let currentStep = 1;
+        const totalSteps = 5;
+        let ws;
+
+        function connectWebSocket() {
+            ws = new WebSocket(`ws://${window.location.host}`);
+            
+            ws.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                updateStepWithRealData(message);
+            };
+
+            ws.onclose = function() {
+                setTimeout(connectWebSocket, 1000);
+            };
+        }
+
+        function updateStepWithRealData(message) {
+            const step = document.getElementById(`step${message.step}`);
+            if (!step) return;
+
+            // Update the message exchange div with real data
+            const messageExchange = step.querySelector('.message-exchange');
+            if (!messageExchange) return;
+
+            // Create real-time update element
+            const realTimeUpdate = document.createElement('div');
+            realTimeUpdate.className = 'real-time-update';
+            realTimeUpdate.innerHTML = `
+                <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+                <div class="update-title">${message.title}</div>
+                <div class="code-block">
+                    <pre>${JSON.stringify(message.data, null, 2)}</pre>
+                </div>
+            `;
+
+            // Add the real-time update to the message exchange
+            messageExchange.appendChild(realTimeUpdate);
+
+            // Show the step
+            showStep(message.step);
+        }
+
+        function updateProgress() {
+            const progress = (currentStep / totalSteps) * 100;
+            document.querySelector('.progress').style.width = `${progress}%`;
+        }
+
+        function showStep(stepNumber) {
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active');
+            });
+            document.getElementById(`step${stepNumber}`).classList.add('active');
+            currentStep = stepNumber;
+            updateProgress();
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                showStep(currentStep + 1);
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 1) {
+                showStep(currentStep - 1);
+            }
+        }
+
+        // Add styles for real-time updates
+        const style = document.createElement('style');
+        style.textContent = `
+            .real-time-update {
+                margin-top: 15px;
+                padding: 10px;
+                background-color: #f8f9fa;
+                border-left: 4px solid #28a745;
+            }
+            .timestamp {
+                color: #6c757d;
+                font-size: 0.9em;
+            }
+            .update-title {
+                font-weight: bold;
+                margin: 5px 0;
+                color: #28a745;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Connect to WebSocket when the page loads
+        connectWebSocket();
+    </script>
 </body>
 </html>
