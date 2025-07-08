@@ -122,7 +122,12 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { injectSpeedInsights } from 'https://cdn.vercel.com/speed-insights/script.js'
+        injectSpeedInsights({
+            route: '/'
+        });
+
         let currentStep = 1;
         const totalSteps = 5;
         let ws;

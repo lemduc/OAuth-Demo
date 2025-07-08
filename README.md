@@ -55,3 +55,16 @@ This is a simple demonstration of the OAuth 2.0 Authorization Code Flow using No
 - `public/index.html`: Homepage with login button
 - `public/protected.html`: Protected page only visible after authentication
 - `.env`: Configuration file for OAuth credentials
+- `vercel.json`: Vercel deployment configuration
+
+## Performance Monitoring
+
+This application includes Vercel Speed Insights to monitor and analyze performance metrics. Speed Insights provides:
+
+- Real User Monitoring (RUM)
+- Core Web Vitals tracking
+- Performance analysis
+- Page load time metrics
+- User experience metrics
+
+You can view these metrics in your Vercel dashboard after deployment.

@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Protected Page - OAuth Demo</title>
+    <script type="module">
+        import { injectSpeedInsights } from 'https://cdn.vercel.com/speed-insights/script.js'
+        injectSpeedInsights({
+            route: '/protected'
+        });
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
