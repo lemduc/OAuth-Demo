@@ -1,0 +1,36 @@
+name: Deploy OAuth App
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Create env file
+      run: |
+        echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" > .env
+        echo "CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> .env
+        echo "OAUTH_AUTH_URL=${{ secrets.OAUTH_AUTH_URL }}" >> .env
+        echo "OAUTH_TOKEN_URL=${{ secrets.OAUTH_TOKEN_URL }}" >> .env
+        echo "CALLBACK_URL=${{ secrets.CALLBACK_URL }}" >> .env
+        echo "PORT=${{ secrets.PORT }}" >> .env

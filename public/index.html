@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .flow-diagram {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>OAuth 2.0 Authorization Code Flow Demo</h1>
+    
+    <div class="container">
+        <h2>What is OAuth Authorization Code Flow?</h2>
+        <p>The OAuth 2.0 Authorization Code Flow is the most secure way to authenticate users in web applications. It involves several steps to ensure secure authentication:</p>
+        
+        <div class="flow-diagram">
+            <h3>Flow Steps:</h3>
+            <ol>
+                <li>User clicks "Login" and is redirected to the OAuth provider</li>
+                <li>User authenticates with the provider and grants permissions</li>
+                <li>Provider redirects back to our app with an authorization code</li>
+                <li>Our server exchanges the code for an access token</li>
+                <li>User is authenticated and can access protected resources</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Try it yourself!</h2>
+        <p>Click the button below to start the OAuth flow:</p>
+        <a href="/login" class="btn">Login with OAuth</a>
+    </div>
+</body>
+</html>

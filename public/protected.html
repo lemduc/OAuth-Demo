@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protected Page - OAuth Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .success-message {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Protected Resource</h1>
+    
+    <div class="container">
+        <h2>Authentication Successful! 🎉</h2>
+        <p class="success-message">You have successfully authenticated using OAuth 2.0!</p>
+        <p>This page is only accessible to authenticated users. The server verified your access token before showing you this content.</p>
+    </div>
+
+    <div class="container">
+        <h2>What happened?</h2>
+        <p>Let's break down what just occurred in the OAuth flow:</p>
+        <ol>
+            <li>You clicked the login button on the home page</li>
+            <li>You were redirected to the OAuth provider's login page</li>
+            <li>After logging in, the provider sent an authorization code to our server</li>
+            <li>Our server exchanged that code for an access token</li>
+            <li>Your session was created, and you were redirected here</li>
+        </ol>
+    </div>
+
+    <a href="/logout" class="btn">Logout</a>
+</body>
+</html>
