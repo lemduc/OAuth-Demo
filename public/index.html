@@ -20,7 +20,7 @@
                 <div class="step-number">1</div>
                 <h2>Initiate OAuth Flow</h2>
             </div>
-            <p>When you click "Login with Auth0", the following will happen:</p>
+            <p>In the OAuth flow, the first step is to redirect to the authorization endpoint:</p>
             <div class="message-exchange">
                 <div>GET /login</div>
                 <div class="message-arrow">Redirects to Auth0's authorization endpoint</div>
@@ -33,7 +33,6 @@
                 </div>
             </div>
             <div class="navigation">
-                <a href="/login" class="btn" onclick="startOAuth()">Login with Auth0</a>
                 <button class="btn" onclick="nextStep()">Show Next Step</button>
             </div>
         </div>
@@ -52,7 +51,7 @@
             </div>
             <div class="navigation">
                 <button class="btn" onclick="previousStep()">Previous</button>
-                <button class="btn" onclick="nextStep()">Next</button>
+                <button class="btn" onclick="startOAuth(); return false;">Next (Start Auth)</button>
             </div>
         </div>
 
@@ -127,9 +126,11 @@
         injectSpeedInsights({
             route: '/'
         });
-
-        let currentStep = 1;
-        const totalSteps = 5;
+    </script>
+    <script>
+        // Make functions globally available
+        window.currentStep = 1;
+        window.totalSteps = 5;
         let ws;
 
         function connectWebSocket() {
@@ -144,6 +145,12 @@
                 setTimeout(connectWebSocket, 1000);
             };
         }
+
+        window.startOAuth = function() {
+            // Store the current page URL to handle the callback
+            sessionStorage.setItem('oauth_origin_step', window.currentStep);
+            window.location.href = '/login';
+        };
 
         function updateStepWithRealData(message) {
             const step = document.getElementById(`step${message.step}`);
@@ -167,35 +174,43 @@
             // Add the real-time update to the message exchange
             messageExchange.appendChild(realTimeUpdate);
 
-            // Show the step
-            showStep(message.step);
+            // If this is an authentication success message, move to step 3
+   
+            if (message.data && message.data.auth_status === 'success') {
+                console.log('Authentication successful, moving to step 3');
+                setTimeout(() => showStep(3), 5000);
+            } else {
+                // Otherwise, just show the step
+                showStep(message.step);
+            }
+
         }
 
-        function updateProgress() {
-            const progress = (currentStep / totalSteps) * 100;
+        window.updateProgress = function() {
+            const progress = (window.currentStep / window.totalSteps) * 100;
             document.querySelector('.progress').style.width = `${progress}%`;
         }
 
-        function showStep(stepNumber) {
+        window.showStep = function(stepNumber) {
             document.querySelectorAll('.step').forEach(step => {
                 step.classList.remove('active');
             });
             document.getElementById(`step${stepNumber}`).classList.add('active');
-            currentStep = stepNumber;
+            window.currentStep = stepNumber;
             updateProgress();
-        }
+        };
 
-        function nextStep() {
-            if (currentStep < totalSteps) {
-                showStep(currentStep + 1);
+        window.nextStep = function() {
+            if (window.currentStep < window.totalSteps) {
+                window.showStep(window.currentStep + 1);
             }
-        }
+        };
 
-        function previousStep() {
-            if (currentStep > 1) {
-                showStep(currentStep - 1);
+        window.previousStep = function() {
+            if (window.currentStep > 1) {
+                window.showStep(window.currentStep - 1);
             }
-        }
+        };
 
         // Add styles for real-time updates
         const style = document.createElement('style');
@@ -220,6 +235,18 @@
 
         // Connect to WebSocket when the page loads
         connectWebSocket();
+
+        // Check for step in URL hash when page loads
+        window.addEventListener('load', function() {
+            const hash = window.location.hash;
+            if (hash) {
+                const params = new URLSearchParams(hash.substring(1));
+                const step = params.get('step');
+                if (step) {
+                    setTimeout(() => window.showStep(parseInt(step)), 500);
+                }
+            }
+        });
     </script>
 </body>
 </html>

@@ -88,7 +88,7 @@ app.get('/', (req, res) => {
 app.get('/login', (req, res, next) => {
     // Log the start of authentication
     broadcast({
-        step: 1,
+        step: 2,
         title: "Starting Auth0 Authentication",
         data: {
             authUrl: `https://${process.env.AUTH0_DOMAIN}/authorize?` +
@@ -99,7 +99,8 @@ app.get('/login', (req, res, next) => {
         }
     });
     passport.authenticate('auth0', {
-        scope: 'openid email profile'
+        scope: 'openid email profile',
+        prompt: 'login'
     })(req, res, next);
 });
 
@@ -123,9 +124,10 @@ app.get('/callback', (req, res, next) => {
 }, (req, res) => {
     // Log successful authentication
     broadcast({
-        step: 5,
-        title: "Authentication Complete",
+        step: 3,
+        title: "Authorization Code Exchange Complete",
         data: {
+            auth_status: 'success',
             user: {
                 name: req.user.displayName,
                 email: req.user.emails?.[0]?.value,
@@ -133,7 +135,8 @@ app.get('/callback', (req, res, next) => {
             }
         }
     });
-    res.redirect('/protected');
+    // Redirect with a hash that will trigger showing step 3
+    res.redirect('/#step=3');
 });
 
 app.get('/protected', ensureAuthenticated, (req, res) => {

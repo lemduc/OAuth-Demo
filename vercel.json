@@ -11,15 +11,5 @@
       "src": "/(.*)",
       "dest": "/server.js"
     }
-  ],
-  "regions": ["all"],
-  "functions": {
-    "api/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "github": {
-    "silent": true
-  }
+  ]
 }
