@@ -10,6 +10,7 @@
             route: '/protected'
         });
     </script>
+    <link rel="stylesheet" href="/styles.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,7 +20,7 @@
             line-height: 1.6;
         }
         .container {
-            background-color: #f5f5f5;
+            background-color: var(--bg-secondary);
             padding: 20px;
             border-radius: 5px;
             margin-top: 20px;
@@ -32,14 +33,22 @@
             text-decoration: none;
             border-radius: 5px;
             margin-top: 20px;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #c82333;
         }
         .success-message {
-            color: #28a745;
+            color: var(--success-color);
             font-weight: bold;
         }
     </style>
 </head>
 <body>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <span id="theme-icon">🌙</span>
+    </button>
+    
     <h1>Protected Resource</h1>
     
     <div class="container">
@@ -61,5 +70,34 @@
     </div>
 
     <a href="/logout" class="btn">Logout</a>
+
+    <script>
+        // Theme management (same as index.html)
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Update icon
+            const themeIcon = document.getElementById('theme-icon');
+            themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        }
+
+        // Initialize theme on page load
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            
+            document.documentElement.setAttribute('data-theme', theme);
+            const themeIcon = document.getElementById('theme-icon');
+            themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        // Initialize theme when page loads
+        window.addEventListener('load', initializeTheme);
+    </script>
 </body>
 </html>

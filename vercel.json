@@ -11,5 +11,11 @@
       "src": "/(.*)",
       "dest": "/server.js"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "dev": {
+    "port": 3000
+  }
 }

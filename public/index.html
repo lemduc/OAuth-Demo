@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <span id="theme-icon">🌙</span>
+    </button>
+    
     <div class="container">
         <h1>OAuth 2.0 Authorization Code Flow Demo</h1>
         
@@ -233,11 +237,37 @@
         `;
         document.head.appendChild(style);
 
+        // Theme management
+        window.toggleTheme = function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Update icon
+            const themeIcon = document.getElementById('theme-icon');
+            themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        };
+
+        // Initialize theme on page load
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            
+            document.documentElement.setAttribute('data-theme', theme);
+            const themeIcon = document.getElementById('theme-icon');
+            themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
         // Connect to WebSocket when the page loads
         connectWebSocket();
 
         // Check for step in URL hash when page loads
         window.addEventListener('load', function() {
+            initializeTheme();
+            
             const hash = window.location.hash;
             if (hash) {
                 const params = new URLSearchParams(hash.substring(1));
