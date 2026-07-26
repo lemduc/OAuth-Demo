@@ -10,10 +10,12 @@
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
         <span id="theme-icon">🌙</span>
     </button>
-    
+
     <div class="container">
         <h1>OAuth 2.0 Authorization Code Flow Demo</h1>
-        
+
+        <div id="flow-error" class="error-banner" hidden></div>
+
         <div class="progress-bar">
             <div class="progress" style="width: 20%"></div>
         </div>
@@ -33,8 +35,16 @@
                     response_type=code&
                     client_id=${CLIENT_ID}&
                     redirect_uri=${CALLBACK_URL}&
-                    scope=openid+profile+email
+                    scope=openid+profile+email&
+                    state=${RANDOM_STATE}&
+                    code_challenge=${S256_CHALLENGE}&
+                    code_challenge_method=S256
                 </div>
+                <p class="note">
+                    <code>state</code> protects against CSRF. <code>code_challenge</code> is PKCE:
+                    it binds the authorization code to this client, so a stolen code cannot be
+                    redeemed by anyone else.
+                </p>
             </div>
             <div class="navigation">
                 <button class="btn" onclick="nextStep()">Show Next Step</button>
@@ -70,7 +80,7 @@
                 <div>Auth0 redirects back to your application</div>
                 <div class="message-arrow">With authorization code</div>
                 <div class="code-block">
-                    ${CALLBACK_URL}?code=AUTHORIZATION_CODE
+                    ${CALLBACK_URL}?code=AUTHORIZATION_CODE&state=${RANDOM_STATE}
                 </div>
             </div>
             <div class="navigation">
@@ -95,10 +105,14 @@
                         "code": "AUTHORIZATION_CODE",
                         "client_id": "${CLIENT_ID}",
                         "client_secret": "${CLIENT_SECRET}",
+                        "code_verifier": "${PKCE_VERIFIER}",
                         "redirect_uri": "${CALLBACK_URL}"
                     }
                 </div>
-                <div class="message-arrow">Returns access & ID tokens</div>
+                <div class="message-arrow">Returns access &amp; ID tokens</div>
+                <p class="note">
+                    This request happens server to server. The client secret never reaches the browser.
+                </p>
             </div>
             <div class="navigation">
                 <button class="btn" onclick="previousStep()">Previous</button>
@@ -115,7 +129,7 @@
             <p>Authentication complete:</p>
             <div class="message-exchange">
                 <div>✓ User is authenticated</div>
-                <div>✓ Access token stored in session</div>
+                <div>✓ Session cookie issued (HttpOnly)</div>
                 <div>✓ User profile information available</div>
             </div>
             <div class="navigation">
@@ -125,157 +139,156 @@
         </div>
     </div>
 
-    <script type="module">
-        import { injectSpeedInsights } from 'https://cdn.vercel.com/speed-insights/script.js'
-        injectSpeedInsights({
-            route: '/'
-        });
-    </script>
     <script>
-        // Make functions globally available
         window.currentStep = 1;
         window.totalSteps = 5;
+
         let ws;
+        let flowId = null;
+        let reconnectDelay = 1000;
+        const renderedEvents = new Set();
+
+        function showError(text) {
+            const banner = document.getElementById('flow-error');
+            banner.textContent = text;
+            banner.hidden = false;
+        }
+
+        async function initFlow() {
+            try {
+                const response = await fetch('/api/flow');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                flowId = (await response.json()).flowId;
+                connectWebSocket();
+            } catch (err) {
+                showError('Could not reach the server to start the flow. Is it running?');
+            }
+        }
 
         function connectWebSocket() {
-            ws = new WebSocket(`ws://${window.location.host}`);
-            
-            ws.onmessage = function(event) {
-                const message = JSON.parse(event.data);
-                updateStepWithRealData(message);
+            if (!flowId) return;
+
+            // Must match the page protocol: a ws:// socket on an https:// page is
+            // blocked as mixed content.
+            const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${scheme}//${window.location.host}`);
+
+            ws.onopen = () => {
+                reconnectDelay = 1000;
+                ws.send(JSON.stringify({ type: 'register', flowId }));
             };
 
-            ws.onclose = function() {
-                setTimeout(connectWebSocket, 1000);
+            ws.onmessage = (event) => {
+                let message;
+                try {
+                    message = JSON.parse(event.data);
+                } catch {
+                    return;
+                }
+
+                if (message.type === 'history') {
+                    // Replays the steps that happened while this page was away at Auth0.
+                    message.events.forEach(renderEvent);
+                } else if (message.type === 'event') {
+                    renderEvent(message.event);
+                } else if (message.type === 'error') {
+                    showError(message.message);
+                }
+            };
+
+            ws.onclose = () => {
+                setTimeout(connectWebSocket, reconnectDelay);
+                reconnectDelay = Math.min(reconnectDelay * 2, 15000);
             };
         }
 
-        window.startOAuth = function() {
-            // Store the current page URL to handle the callback
-            sessionStorage.setItem('oauth_origin_step', window.currentStep);
+        function renderEvent(event) {
+            if (renderedEvents.has(event.id)) return;
+            renderedEvents.add(event.id);
+
+            const step = document.getElementById(`step${event.step}`);
+            if (!step) return;
+            const host = step.querySelector('.message-exchange');
+            if (!host) return;
+
+            // Built with textContent throughout. Assigning server data to innerHTML
+            // would let anything that reaches an event payload execute as markup.
+            const wrapper = document.createElement('div');
+            wrapper.className = 'real-time-update';
+
+            const timestamp = document.createElement('div');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date(event.at).toLocaleTimeString();
+
+            const title = document.createElement('div');
+            title.className = 'update-title';
+            title.textContent = event.title;
+
+            const body = document.createElement('pre');
+            body.className = 'code-block';
+            body.textContent = JSON.stringify(event.data, null, 2);
+
+            wrapper.append(timestamp, title, body);
+            host.appendChild(wrapper);
+
+            showStep(event.step);
+        }
+
+        window.startOAuth = function () {
             window.location.href = '/login';
         };
 
-        function updateStepWithRealData(message) {
-            const step = document.getElementById(`step${message.step}`);
-            if (!step) return;
-
-            // Update the message exchange div with real data
-            const messageExchange = step.querySelector('.message-exchange');
-            if (!messageExchange) return;
-
-            // Create real-time update element
-            const realTimeUpdate = document.createElement('div');
-            realTimeUpdate.className = 'real-time-update';
-            realTimeUpdate.innerHTML = `
-                <div class="timestamp">${new Date().toLocaleTimeString()}</div>
-                <div class="update-title">${message.title}</div>
-                <div class="code-block">
-                    <pre>${JSON.stringify(message.data, null, 2)}</pre>
-                </div>
-            `;
-
-            // Add the real-time update to the message exchange
-            messageExchange.appendChild(realTimeUpdate);
-
-            // If this is an authentication success message, move to step 3
-   
-            if (message.data && message.data.auth_status === 'success') {
-                console.log('Authentication successful, moving to step 3');
-                setTimeout(() => showStep(3), 5000);
-            } else {
-                // Otherwise, just show the step
-                showStep(message.step);
-            }
-
-        }
-
-        window.updateProgress = function() {
+        window.updateProgress = function () {
             const progress = (window.currentStep / window.totalSteps) * 100;
             document.querySelector('.progress').style.width = `${progress}%`;
-        }
+        };
 
-        window.showStep = function(stepNumber) {
-            document.querySelectorAll('.step').forEach(step => {
-                step.classList.remove('active');
-            });
-            document.getElementById(`step${stepNumber}`).classList.add('active');
+        window.showStep = function (stepNumber) {
+            const target = document.getElementById(`step${stepNumber}`);
+            if (!target) return;
+
+            document.querySelectorAll('.step').forEach((step) => step.classList.remove('active'));
+            target.classList.add('active');
             window.currentStep = stepNumber;
             updateProgress();
         };
 
-        window.nextStep = function() {
-            if (window.currentStep < window.totalSteps) {
-                window.showStep(window.currentStep + 1);
-            }
+        window.nextStep = function () {
+            if (window.currentStep < window.totalSteps) window.showStep(window.currentStep + 1);
         };
 
-        window.previousStep = function() {
-            if (window.currentStep > 1) {
-                window.showStep(window.currentStep - 1);
-            }
+        window.previousStep = function () {
+            if (window.currentStep > 1) window.showStep(window.currentStep - 1);
         };
 
-        // Add styles for real-time updates
-        const style = document.createElement('style');
-        style.textContent = `
-            .real-time-update {
-                margin-top: 15px;
-                padding: 10px;
-                background-color: #f8f9fa;
-                border-left: 4px solid #28a745;
-            }
-            .timestamp {
-                color: #6c757d;
-                font-size: 0.9em;
-            }
-            .update-title {
-                font-weight: bold;
-                margin: 5px 0;
-                color: #28a745;
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Theme management
-        window.toggleTheme = function() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
+        window.toggleTheme = function () {
+            const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
-            
-            // Update icon
-            const themeIcon = document.getElementById('theme-icon');
-            themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
         };
 
-        // Initialize theme on page load
         function initializeTheme() {
             const savedTheme = localStorage.getItem('theme');
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-            
+
             document.documentElement.setAttribute('data-theme', theme);
-            const themeIcon = document.getElementById('theme-icon');
-            themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
         }
 
-        // Connect to WebSocket when the page loads
-        connectWebSocket();
-
-        // Check for step in URL hash when page loads
-        window.addEventListener('load', function() {
+        window.addEventListener('load', () => {
             initializeTheme();
-            
-            const hash = window.location.hash;
-            if (hash) {
-                const params = new URLSearchParams(hash.substring(1));
-                const step = params.get('step');
-                if (step) {
-                    setTimeout(() => window.showStep(parseInt(step)), 500);
-                }
+
+            if (new URLSearchParams(window.location.search).get('error') === 'authentication_failed') {
+                showError('Authentication failed. Check the server logs and your Auth0 settings, then try again.');
             }
+
+            const params = new URLSearchParams(window.location.hash.substring(1));
+            const step = parseInt(params.get('step'), 10);
+            if (step) showStep(step);
+
+            initFlow();
         });
     </script>
 </body>

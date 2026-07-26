@@ -1,19 +1,27 @@
 {
-  "name": "oauth-test",
+  "name": "oauth-demo",
   "version": "1.0.0",
-  "description": "",
+  "description": "Interactive demo of the OAuth 2.0 Authorization Code flow with PKCE, using Auth0",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js --ext js,html,css --ignore public/"
+    "dev": "nodemon server.js",
+    "check": "node --check server.js"
   },
-  "keywords": [],
+  "keywords": [
+    "oauth2",
+    "pkce",
+    "auth0",
+    "passport",
+    "demo"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "@vercel/speed-insights": "^1.2.0",
     "dotenv": "^17.1.0",
     "express": "^5.1.0",
     "express-session": "^1.18.1",

@@ -5,3 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 .vercel
+
+# Local env files
+docker.env
+.env.local

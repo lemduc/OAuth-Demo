@@ -178,3 +178,47 @@ body {
     font-weight: bold;
     margin: 10px 0;
 }
+
+.note {
+    font-family: Arial, sans-serif;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin: 10px 0 0;
+}
+
+/* Live updates pushed over the WebSocket. Previously injected from JS at runtime. */
+.real-time-update {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: var(--bg-secondary);
+    border-left: 4px solid var(--success-color);
+    border-radius: 4px;
+}
+
+.real-time-update .timestamp {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.real-time-update .update-title {
+    font-weight: bold;
+    margin: 5px 0;
+    color: var(--success-color);
+}
+
+.real-time-update pre.code-block {
+    margin: 5px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.error-banner {
+    background-color: var(--bg-secondary);
+    border: 1px solid #dc3545;
+    border-left: 4px solid #dc3545;
+    color: var(--text-color);
+    font-family: Arial, sans-serif;
+    padding: 12px 15px;
+    border-radius: 4px;
+    margin: 15px 0;
+}
