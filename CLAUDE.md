@@ -77,6 +77,10 @@ request, including the WebSocket upgrade, to a single named container instance v
 - `max_instances` stays 1 and routing stays singleton. Session and flow state are
   in-process; fanning out breaks logins.
 - Use `Container.fetch()`, never `containerFetch()`, which does not proxy WebSockets.
+- The Worker sets `X-Forwarded-Proto` before forwarding. The internal hop is plain HTTP,
+  and without that header `express-session` drops the cookie and login silently never
+  completes. This pairs with `cookie.secure: 'auto'` in `server.js` — do not hardcode
+  `secure: true`, which fails the same way wherever the header is absent.
 
 Secrets reach the container through the `envVars` assignment in the container class
 constructor, sourced from Worker secrets. `envVars` must be assigned in the constructor

@@ -42,6 +42,13 @@ export class OAuthDemoContainer extends Container {
 
 export default {
     async fetch(request, env) {
+        // The Worker-to-container hop is plain HTTP, so without this the app sees
+        // an insecure request and express-session refuses to issue the Secure
+        // session cookie. That failure is silent: requests still succeed, but no
+        // session is ever established and login can never complete.
+        const proxied = new Request(request);
+        proxied.headers.set('X-Forwarded-Proto', new URL(request.url).protocol.replace(':', ''));
+
         // One named instance for the whole app. express-session's store and the
         // flow event log are both in-process, so every request — including the
         // WebSocket upgrade — has to reach the same container. Do not switch to
@@ -50,6 +57,6 @@ export default {
         //
         // Container.fetch() detects the Upgrade header and proxies the socket
         // bidirectionally. containerFetch() does not support WebSockets.
-        return getContainer(env.OAUTH_DEMO, 'oauth-demo').fetch(request);
+        return getContainer(env.OAUTH_DEMO, 'oauth-demo').fetch(proxied);
     }
 };

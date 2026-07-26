@@ -139,6 +139,11 @@ Node process.
 The Worker forwards the WebSocket upgrade through `Container.fetch()`, which proxies the
 socket bidirectionally. `containerFetch()` does not support WebSockets — do not switch to it.
 
+The Worker also sets `X-Forwarded-Proto` from the incoming request. The Worker-to-container
+hop is plain HTTP, so without it the app sees an insecure request and `express-session`
+silently drops the session cookie: requests still return 200, but no session is ever stored
+and login can never complete.
+
 **`max_instances` must stay 1.** Sessions and the flow event log live in the container's
 memory, so a second instance would serve requests that cannot see them and logins would
 fail unpredictably. Raising it requires moving session state to KV, D1, or a Durable Object

@@ -48,7 +48,11 @@ app.use(session({
         // Must stay 'lax'. With 'strict' the browser withholds the cookie on the
         // cross-site redirect back from Auth0, so state validation would always fail.
         sameSite: 'lax',
-        secure: isProduction,
+        // 'auto' marks the cookie Secure only when the request arrived over HTTPS,
+        // which behind a proxy means X-Forwarded-Proto (see trust proxy above).
+        // Hardcoding true breaks every plain-HTTP deployment silently: the cookie
+        // is dropped, so no session is ever established and login cannot complete.
+        secure: 'auto',
         maxAge: 60 * 60 * 1000
     }
 }));
