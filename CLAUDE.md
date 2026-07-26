@@ -70,6 +70,19 @@ Requires a persistent Node process. Serverless platforms without WebSocket upgra
 container host. The default `MemoryStore` session store should be replaced with Redis for
 any multi-instance deployment.
 
+**Cloudflare Containers** (`wrangler.jsonc`, `worker/index.mjs`): the Worker forwards every
+request, including the WebSocket upgrade, to a single named container instance via
+`getContainer(...).fetch()`. Two invariants:
+
+- `max_instances` stays 1 and routing stays singleton. Session and flow state are
+  in-process; fanning out breaks logins.
+- Use `Container.fetch()`, never `containerFetch()`, which does not proxy WebSockets.
+
+Secrets reach the container through the `envVars` assignment in the container class
+constructor, sourced from Worker secrets. `envVars` must be assigned in the constructor
+rather than declared as a getter — the base class initializes it as an instance field,
+which would shadow a prototype getter.
+
 ## Key Routes
 
 - `/` — flow visualization

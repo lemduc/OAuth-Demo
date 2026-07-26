@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "oauth-demo",
+  "main": "worker/index.mjs",
+  "compatibility_date": "2026-07-01",
+
+  "containers": [
+    {
+      "class_name": "OAuthDemoContainer",
+      "image": "./Dockerfile",
+
+      // Must stay 1. Sessions and the flow event log are in-container memory,
+      // so a second instance would serve requests that cannot see them.
+      "max_instances": 1,
+
+      // 256 MiB / 1/16 vCPU, which is ample for this Node process and gives the
+      // most awake hours against the plan's included 25 GiB-hours.
+      "instance_type": "lite"
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "OAUTH_DEMO",
+        "class_name": "OAuthDemoContainer"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["OAuthDemoContainer"]
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

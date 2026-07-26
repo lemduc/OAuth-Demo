@@ -107,6 +107,50 @@ For anything beyond a demo, replace the default in-memory session store with a s
 such as Redis; `express-session`'s `MemoryStore` leaks memory and does not survive a
 restart or span multiple instances.
 
+### Cloudflare Containers
+
+`wrangler.jsonc` and `worker/index.mjs` deploy this to
+[Cloudflare Containers](https://developers.cloudflare.com/containers/), which runs the
+Dockerfile above behind a Worker. Requires the **Workers Paid plan** ($5/month). Workers
+alone cannot host this app — `server.listen()`, `ws`, and `express-session` all need a real
+Node process.
+
+1. Set the secrets (each prompts for a value):
+
+   ```bash
+   npx wrangler secret put AUTH0_DOMAIN
+   npx wrangler secret put AUTH0_CLIENT_ID
+   npx wrangler secret put AUTH0_CLIENT_SECRET
+   npx wrangler secret put AUTH0_CALLBACK_URL
+   npx wrangler secret put APP_BASE_URL
+   npx wrangler secret put SESSION_SECRET
+   ```
+
+2. Deploy:
+
+   ```bash
+   npm run cf:deploy
+   ```
+
+3. Take the deployed URL and set `AUTH0_CALLBACK_URL` to `<url>/callback` and
+   `APP_BASE_URL` to `<url>`, then add both to your Auth0 **Allowed Callback URLs** and
+   **Allowed Logout URLs**. Re-run `wrangler secret put` for the two values and redeploy.
+
+The Worker forwards the WebSocket upgrade through `Container.fetch()`, which proxies the
+socket bidirectionally. `containerFetch()` does not support WebSockets — do not switch to it.
+
+**`max_instances` must stay 1.** Sessions and the flow event log live in the container's
+memory, so a second instance would serve requests that cannot see them and logins would
+fail unpredictably. Raising it requires moving session state to KV, D1, or a Durable Object
+first.
+
+The container sleeps after `sleepAfter` (30m), which ends all sessions and clears the flow
+log. That is fine for a demo — it also means you only pay for awake time, and a `lite`
+instance fits roughly 100 hours/month inside the plan's included allotment.
+
+Building the image locally requires Docker running; on Apple Silicon, build with
+`--platform linux/amd64`.
+
 ## Files
 
 - `server.js` — Express server, Passport/Auth0 setup, WebSocket flow log
