@@ -5,3 +5,10 @@ npm-debug.log
 .gitignore
 .dockerignore
 README.md
+CLAUDE.md
+
+# Worker-side files are built and run by Cloudflare, not inside the image.
+worker
+wrangler.jsonc
+.wrangler
+.github

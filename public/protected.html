@@ -4,43 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Protected Page - OAuth Demo</title>
-    <script type="module">
-        import { injectSpeedInsights } from 'https://cdn.vercel.com/speed-insights/script.js'
-        injectSpeedInsights({
-            route: '/protected'
-        });
-    </script>
     <link rel="stylesheet" href="/styles.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            background-color: var(--bg-secondary);
-            padding: 20px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .btn {
+        .logout-btn {
             display: inline-block;
-            padding: 10px 20px;
             background-color: #dc3545;
-            color: white;
             text-decoration: none;
-            border-radius: 5px;
             margin-top: 20px;
-            transition: background-color 0.3s ease;
         }
-        .btn:hover {
+
+        .logout-btn:hover {
             background-color: #c82333;
         }
-        .success-message {
-            color: var(--success-color);
+
+        .profile dt {
             font-weight: bold;
+            color: var(--text-secondary);
+        }
+
+        .profile dd {
+            margin: 0 0 10px;
         }
     </style>
 </head>
@@ -48,56 +31,81 @@
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
         <span id="theme-icon">🌙</span>
     </button>
-    
-    <h1>Protected Resource</h1>
-    
-    <div class="container">
-        <h2>Authentication Successful! 🎉</h2>
-        <p class="success-message">You have successfully authenticated using OAuth 2.0!</p>
-        <p>This page is only accessible to authenticated users. The server verified your access token before showing you this content.</p>
-    </div>
 
     <div class="container">
-        <h2>What happened?</h2>
-        <p>Let's break down what just occurred in the OAuth flow:</p>
-        <ol>
-            <li>You clicked the login button on the home page</li>
-            <li>You were redirected to the OAuth provider's login page</li>
-            <li>After logging in, the provider sent an authorization code to our server</li>
-            <li>Our server exchanged that code for an access token</li>
-            <li>Your session was created, and you were redirected here</li>
-        </ol>
-    </div>
+        <h1>Protected Resource</h1>
 
-    <a href="/logout" class="btn">Logout</a>
+        <div class="message-exchange">
+            <h2>Authentication Successful! 🎉</h2>
+            <p class="success-message">You have successfully authenticated using OAuth 2.0!</p>
+            <p>
+                This page is only accessible to authenticated users. The server checked your
+                session before serving it.
+            </p>
+        </div>
+
+        <div class="message-exchange">
+            <h2>Your profile</h2>
+            <p class="note">Fetched from <code>/api/me</code>, which reads the server-side session.</p>
+            <dl class="profile" id="profile">
+                <dt>Name</dt>
+                <dd id="profile-name">Loading…</dd>
+                <dt>Email</dt>
+                <dd id="profile-email">Loading…</dd>
+            </dl>
+        </div>
+
+        <div class="message-exchange">
+            <h2>What happened?</h2>
+            <p>Let's break down what just occurred in the OAuth flow:</p>
+            <ol>
+                <li>You clicked the login button on the home page</li>
+                <li>You were redirected to Auth0's login page</li>
+                <li>After logging in, Auth0 sent an authorization code back to our server</li>
+                <li>Our server exchanged that code (plus the PKCE verifier) for tokens</li>
+                <li>Your session was created, and you were redirected here</li>
+            </ol>
+        </div>
+
+        <a href="/logout" class="btn logout-btn">Logout</a>
+    </div>
 
     <script>
-        // Theme management (same as index.html)
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
+        window.toggleTheme = function () {
+            const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
-            
-            // Update icon
-            const themeIcon = document.getElementById('theme-icon');
-            themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-        }
+            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        };
 
-        // Initialize theme on page load
         function initializeTheme() {
             const savedTheme = localStorage.getItem('theme');
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-            
+
             document.documentElement.setAttribute('data-theme', theme);
-            const themeIcon = document.getElementById('theme-icon');
-            themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
         }
 
-        // Initialize theme when page loads
-        window.addEventListener('load', initializeTheme);
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/me');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const { user } = await response.json();
+
+                // textContent, so a display name containing markup stays inert.
+                document.getElementById('profile-name').textContent = user.displayName || '—';
+                document.getElementById('profile-email').textContent = user.email || '—';
+            } catch {
+                document.getElementById('profile-name').textContent = 'Unavailable';
+                document.getElementById('profile-email').textContent = 'Unavailable';
+            }
+        }
+
+        window.addEventListener('load', () => {
+            initializeTheme();
+            loadProfile();
+        });
     </script>
 </body>
 </html>
