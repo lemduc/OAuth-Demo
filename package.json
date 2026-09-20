@@ -35,6 +35,6 @@
   "devDependencies": {
     "@cloudflare/containers": "^0.3.7",
     "nodemon": "^3.1.14",
-    "wrangler": "^4.114.0"
+    "wrangler": "^4.125.0"
   }
 }
